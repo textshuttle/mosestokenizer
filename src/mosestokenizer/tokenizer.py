@@ -50,8 +50,7 @@ class MosesTokenizer(ToolWrapper):
         argv = ["perl", program, "-q", "-l", self.lang]
         if not old_version:
             # -b = disable output buffering
-            # -a = aggressive hyphen splitting
-            argv.extend(["-b", "-a"])
+            argv.extend(["-b"])
         super().__init__(argv)
 
     def __str__(self):
