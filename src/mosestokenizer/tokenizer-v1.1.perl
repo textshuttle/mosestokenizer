@@ -1,9 +1,4 @@
-#!/usr/bin/env perl
-#
-# This file is part of moses.  Its use is licensed under the GNU Lesser General
-# Public License version 2.1 or, at your option, any later version.
-
-use warnings;
+#!/usr/bin/perl -w
 
 # Sample Tokenizer
 ### Version 1.1
@@ -19,17 +14,12 @@ use warnings;
 binmode(STDIN, ":utf8");
 binmode(STDOUT, ":utf8");
 
-use warnings;
 use FindBin qw($RealBin);
 use strict;
 use Time::HiRes;
+use Thread;
 
-if  (eval {require Thread;1;}) {
-  #module loaded
-  Thread->import();
-}
-
-my $mydir = "$RealBin/../share/nonbreaking_prefixes";
+my $mydir = "$RealBin/nonbreaking_prefixes";
 
 my %NONBREAKING_PREFIX = ();
 my @protected_patterns = ();
@@ -243,9 +233,9 @@ sub tokenize
     my @protected = ();
     foreach my $protected_pattern (@protected_patterns) {
       my $t = $text;
-      while ($t =~ /(?<PATTERN>$protected_pattern)(?<TAIL>.*)$/) {
-        push @protected, $+{PATTERN};
-        $t = $+{TAIL};
+      while ($t =~ /($protected_pattern)(.*)$/) {
+        push @protected, $1;
+        $t = $2;
       }
     }
 
@@ -257,17 +247,8 @@ sub tokenize
     $text =~ s/^ //g;
     $text =~ s/ $//g;
 
-    # separate out all "other" special characters
-    if (($language eq "fi") or ($language eq "sv")) {
-        # in Finnish and Swedish, the colon can be used inside words as an apostrophe-like character:
-        # USA:n, 20:een, EU:ssa, USA:s, S:t
-        $text =~ s/([^\p{IsAlnum}\s\.\:\'\`\,\-])/ $1 /g;
-        # if a colon is not immediately followed by lower-case characters, separate it out anyway
-        $text =~ s/(:)(?=$|[^\p{Ll}])/ $1 /g;
-    }
-    else {
-        $text =~ s/([^\p{IsAlnum}\s\.\'\`\,\-])/ $1 /g;
-    }
+    # seperate out all "other" special characters
+    $text =~ s/([^\p{IsAlnum}\s\.\'\`\,\-])/ $1 /g;
 
     # aggressive hyphen splitting
     if ($AGGRESSIVE)
@@ -293,9 +274,6 @@ sub tokenize
     # will also space digit,letter or letter,digit forms (redundant with next section)
     $text =~ s/([^\p{IsN}])[,]/$1 , /g;
     $text =~ s/[,]([^\p{IsN}])/ , $1/g;
-    
-    # separate "," after a number if it's the end of a sentence
-    $text =~ s/([\p{IsN}])[,]$/$1 ,/g;
 
     # separate , pre and post number
     #$text =~ s/([\p{IsN}])[,]([^\p{IsN}])/$1 , $2/g;
@@ -317,7 +295,7 @@ sub tokenize
         #special case for "1990's"
         $text =~ s/([\p{IsN}])[']([s])/$1 '$2/g;
     }
-    elsif (($language eq "fr") or ($language eq "it") or ($language eq "ga"))
+    elsif (($language eq "fr") or ($language eq "it"))
     {
         #split contractions left
         $text =~ s/([^\p{IsAlpha}])[']([^\p{IsAlpha}])/$1 ' $2/g;
@@ -359,9 +337,6 @@ sub tokenize
     $text =~ s/ +/ /g;
     $text =~ s/^ //g;
     $text =~ s/ $//g;
-
-    # .' at end of sentence is missed
-    $text =~ s/\.\' ?$/ . ' /;
 
     # restore protected
     for (my $i = 0; $i < scalar(@protected); ++$i) {
